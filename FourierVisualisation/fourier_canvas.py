@@ -14,7 +14,7 @@ class FourierCanvas(tk.Canvas):
         self.dim = self.SIZE / (self.TICKS[0]+self.TICKS[1]) / 2
         self.pack(anchor=tk.CENTER, expand=True)
 
-        self.kolleg_points = fourier_svg.get_svg_points('kolleg_logo.svg', 1000, self.TICKS[0]*1.5)
+        self.kolleg_points = fourier_svg.get_svg_points('kolleg_logo.svg', 1000, self.TICKS[0]*1.9)
 
         self.draw_grid()
         self.draw_svg()
