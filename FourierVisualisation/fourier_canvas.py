@@ -2,27 +2,51 @@ import numpy as np
 import tkinter as tk
 import fourier_svg
 
-
 class FourierCanvas(tk.Canvas):
-    SIZE = 700 * (1 + 1j)
     TICKS = 1, 0.2, 0.4
+    FONT_SIZE = 9
 
-    def __init__(self, root):
-        super().__init__(root, width=self.SIZE.real, height=self.SIZE.imag, bg='white')
-        root.geometry('800x800')
-        root.title('Fourier Transformation')
+    def __init__(self, root, size, precision):
+        super().__init__(root, width=size, height=size, bg='white')
+        self.SIZE = size * (1 + 1j)
+        self.PRECISION = precision
+
+        self.grid(column=0, row=0, columnspan=2)
+
         self.dim = self.SIZE / (self.TICKS[0]+self.TICKS[1]) / 2
-        self.pack(anchor=tk.CENTER, expand=True)
+        self.xs = np.arange(0, 1+self.PRECISION, self.PRECISION)
+        self.ys = [np.exp(2j*np.pi*x) for x in self.xs]
 
         self.kolleg_points = fourier_svg.get_svg_points('kolleg_logo.svg', 1000, self.TICKS[0]*1.9)
+        self.bind('<B1-Motion>', self.on_drag)
 
         self.draw_grid()
-        self.draw_svg()
-        # tp = self.transform_pos(1j)
-        # self.create_rectangle(tp.real, tp.imag, tp.real+5, tp.imag+5)
+        self.update_ys()
+        # self.draw_svg()
+
+    def on_drag(self, evt):
+        pos = self.transform_pos_inverse(evt.x + evt.y * 1j)
+        angle = np.arctan2(pos.imag, pos.real)
+        self.ys[int(angle / np.pi / 2 / self.PRECISION)] = np.exp(1j*angle) * np.sqrt(pos * pos.conjugate())
+        self.update_ys()
+
+    def update_ys(self):
+        self.delete('ys')
+        dot_size = 10 * (1+1j)
+        for c in self.ys:
+            ap = self.transform_pos(c)
+            self.create_oval(
+                fourier_svg.pos_to_tuple(ap - dot_size/2),
+                fourier_svg.pos_to_tuple(ap + dot_size/2),
+                tags='ys', fill='blue'
+            )
 
     def transform_pos(self, p: complex) -> complex:
         return p.real * self.dim.real - p.imag * self.dim.imag * 1j + self.SIZE/2
+
+    def transform_pos_inverse(self, p: complex) -> complex:
+        pp = p - self.SIZE/2
+        return pp.real / self.dim.real - pp.imag / self.dim.real * 1j
 
     def polygon_points(self, points: list[complex]) -> list[tuple[float]]:
         return [fourier_svg.pos_to_tuple(self.transform_pos(p)) for p in points]
@@ -31,8 +55,8 @@ class FourierCanvas(tk.Canvas):
         tl = self.TICKS[1] * 0.2
         self.draw_arrow(self.SIZE.imag * 0.5j, 0, self.SIZE.real, ab=True, tl=20, tags='coorsys')
         self.draw_arrow(self.SIZE.real * 0.5 + self.SIZE.imag * 1j, -np.pi / 2, self.SIZE.imag, ab=True, tl=20, tags='coorsys')
-        self.create_text((self.SIZE.real/2 + 20, 10), text='Re', font='tkDefaeultFont 7', anchor='w')
-        self.create_text((self.SIZE.real, self.SIZE.imag/2 + 10), text='Im', font='tkDefaeultFont 7', anchor='ne')
+        self.create_text((self.SIZE.real/2 + 20, 10), text='Re', font=f'tkDefaeultFont {int(self.FONT_SIZE*1.5)}', anchor='w')
+        self.create_text((self.SIZE.real, self.SIZE.imag/2 + 10), text='Im', font=f'tkDefaeultFont {int(self.FONT_SIZE*1.5)}', anchor='ne')
         for ax in range(4):
             for t in np.arange(0, self.TICKS[0] + self.TICKS[1], self.TICKS[1]):
                 if t > 0:
@@ -43,7 +67,7 @@ class FourierCanvas(tk.Canvas):
                     if np.isclose(t % self.TICKS[2], 0) or t == self.TICKS[0]:
                         lb = ('–' if ax > 1 else '') + str(round(t, 1)) + ('i' if ax % 2 == 1 else '')
                         lp = fourier_svg.pos_to_tuple(self.transform_pos(1j ** ax * (t - tl * len(lb) * 0.75j)))
-                        self.create_text(lp, text=lb, font='tkDefaeultFont 5', anchor='center')
+                        self.create_text(lp, text=lb, font=f'tkDefaeultFont {self.FONT_SIZE}', anchor='center')
 
 
     def draw_svg(self):

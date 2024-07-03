@@ -3,10 +3,10 @@ import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider
 import numpy as np
 
-max_approx = 30
-xs = np.arange(0, 1, 0.002)
+max_approx = 20
+xs = np.arange(0, 1, 0.0005)
 
-ys_fs = {'f': np.zeros_like(xs), 's': np.zeros_like(xs)}
+ys_fs = {'f': np.where(xs % 0.5 < 0.25, -1.0, 1.0), 's': np.zeros_like(xs)}
 fourier_parts = {'a': 0.0, 'p': np.zeros([2, max_approx, len(xs)])}
 
 main_fig, main_ax = plt.subplots()
@@ -26,12 +26,13 @@ fourier_fig, fourier_ax = plt.subplots()
 fourier_ax.set_ylim([0, 1])
 fourier_ax.set_title('Zusammensetzung der Fourier-Approximation $s_n(t)$')
 
-ys_freq = [0.8*10**(-n/max_approx) for n in range(max_approx+1)]
+ys_freq = [0.75*10**(-(n+(-1 if n == 0 else 0))/max_approx) for n in range(max_approx+1)]
 ys_freq_labels = ['$s_n(t)$'] + [f'${max_approx-n} / T$' for n in range(max_approx)]
 fourier_ax.set_yticks(ys_freq, ys_freq_labels)
 
 fourier_ax.axhline(y=ys_freq[0], c='gray', linestyle='dashed')
-lines = [[fourier_ax.plot(xs, np.zeros_like(xs) + ys_freq[n+1])[0] for n in range(max_approx)] for c in ['r', 'b']]
+lines = [[fourier_ax.plot(xs, np.zeros_like(xs) + ys_freq[n])[0] for n in range(1, max_approx+1)] for c in ['r', 'b']]
+sum_line = fourier_ax.plot(xs, np.zeros_like(xs) + ys_freq[0])[0]
 
 def integral(ys, fac) -> float:
     return sum([(y * fac(i/len(ys)))/len(ys) for i, y in enumerate(ys)])
@@ -47,8 +48,15 @@ def update_fourier(_=0.0):
         else:
             fourier_parts['p'][0][n-1] *= 0
             fourier_parts['p'][1][n-1] *= 0
+
+    yscale = 0.05 / fourier_parts['p'].max()
+    for n in range(1, max_approx + 1):
+        lines[0][n-1].set_ydata(fourier_parts['p'][0][n-1] * yscale + ys_freq[n])
+        lines[1][n-1].set_ydata(fourier_parts['p'][1][n-1] * yscale + ys_freq[n])
+
     ys_fs['s'] = fourier_parts['a'] + sum(sum(fourier_parts['p']))
 
+    sum_line.set_ydata(ys_fs['s'] * yscale + ys_freq[0])
     f_line.set_ydata(ys_fs['f'])
     s_line.set_ydata(ys_fs['s'])
 
@@ -58,7 +66,10 @@ def update_fourier(_=0.0):
 
 is_dragging = threading.Event()
 
-def mouse_press(_): is_dragging.set()
+def mouse_press(evt):
+    try:
+        if 0 <= evt.xdata <= 1 and -1.5 <= evt.ydata <= 1.5: is_dragging.set()
+    except TypeError: pass
 
 def mouse_release(_):
     is_dragging.clear()
@@ -67,7 +78,7 @@ def mouse_release(_):
 def mouse_move(evt):
     try:
         if is_dragging.is_set() and 0 <= evt.xdata <= 1 and -1.5 <= evt.ydata <= 1.5:
-            for d in range(30):
+            for d in range(100):
                 i = int(evt.xdata*len(xs)+0.5)+d
                 if i < len(ys_fs['f']): ys_fs['f'][i] = max(min(evt.ydata, 1), -1)
 
