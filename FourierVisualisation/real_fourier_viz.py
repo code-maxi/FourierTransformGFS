@@ -6,7 +6,7 @@ import numpy as np
 max_approx = 20
 xs = np.arange(0, 1, 0.0005)
 
-ys_fs = {'f': np.where(xs % 0.5 < 0.25, -1.0, 1.0), 's': np.zeros_like(xs)}
+ys_fs = {'f': np.where(xs % 1 < 0.5, -1.0, 1.0), 's': np.zeros_like(xs)}
 fourier_parts = {'a': 0.0, 'p': np.zeros([2, max_approx, len(xs)])}
 
 main_fig, main_ax = plt.subplots()
